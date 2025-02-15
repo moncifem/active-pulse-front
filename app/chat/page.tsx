@@ -153,7 +153,12 @@ export default function ChatPage() {
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
       <Navbar />
       <main className="flex-1 flex overflow-hidden pt-16">
-        <aside className="w-[300px] flex-shrink-0 border-r border-gray-200 bg-white flex flex-col">
+        <aside className={`
+          w-full md:w-[300px] flex-shrink-0 border-r border-gray-200 bg-white flex flex-col
+          fixed md:relative left-0 top-16 bottom-0 z-20
+          transform transition-transform duration-200 ease-in-out
+          ${activeConversation ? '-translate-x-full md:translate-x-0' : 'translate-x-0'}
+        `}>
           <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0">
             <button
               onClick={createNewConversation}
@@ -179,16 +184,42 @@ export default function ChatPage() {
             <ConversationList
               conversations={conversations}
               activeConversation={activeConversation}
-              onSelect={setActiveConversation}
+              onSelect={(id) => {
+                setActiveConversation(id);
+                if (window.innerWidth < 768) {
+                  document.body.classList.remove('sidebar-open');
+                }
+              }}
               onDelete={deleteConversation}
             />
           </div>
         </aside>
 
-        <div className="flex-1 flex flex-col overflow-hidden bg-white">
+        <div className="flex-1 flex flex-col overflow-hidden bg-white relative">
+          <div className="md:hidden absolute top-0 left-0 right-0 z-10 bg-white border-b border-gray-200 px-4 py-2">
+            <button
+              onClick={() => setActiveConversation(null)}
+              className="p-2 rounded-lg hover:bg-gray-100"
+            >
+              <svg
+                className="w-6 h-6 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+          </div>
+
           {activeChat ? (
             <>
-              <header className="border-b border-gray-200 px-6 py-4 bg-white flex-shrink-0">
+              <header className="hidden md:block border-b border-gray-200 px-6 py-4 bg-white flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-800">
                   {activeChat.title}
                 </h2>
@@ -196,7 +227,7 @@ export default function ChatPage() {
                   {new Date(activeChat.createdAt).toLocaleDateString()} · {activeChat.messages.length} messages
                 </p>
               </header>
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden pt-14 md:pt-0">
                 <ChatWindow
                   messages={activeChat.messages}
                   onSendMessage={sendMessage}
