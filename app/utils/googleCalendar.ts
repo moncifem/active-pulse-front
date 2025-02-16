@@ -9,18 +9,18 @@ const oauth2Client = new google.auth.OAuth2(
   `${process.env.NEXT_PUBLIC_APP_URL}/api/callback`
 );
 
-export const initGoogleCalendar = async (): Promise<calendar_v3.Calendar | undefined> => {
+export const initGoogleCalendar = async (): Promise<calendar_v3.Calendar | null> => {
   try {
     const { userId } = await auth();
     if (!userId) {
       console.error("No user ID found");
-      return undefined;
+      return null;
     }
 
     const tokens = await getStoredTokens(userId);
-    if (!tokens) {
-      console.error("No tokens found for user");
-      return undefined;
+    if (!tokens || !tokens.refresh_token) {
+      console.error("No valid tokens found for user");
+      return null;
     }
 
     oauth2Client.setCredentials(tokens);
@@ -30,6 +30,6 @@ export const initGoogleCalendar = async (): Promise<calendar_v3.Calendar | undef
     return calendar;
   } catch (error) {
     console.error("Error initializing Google Calendar API:", error);
-    return undefined;
+    return null;
   }
 }; 

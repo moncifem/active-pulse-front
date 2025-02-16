@@ -5,7 +5,6 @@ const TOKEN_PREFIX = "calendar_token:";
 
 export async function storeTokens(userId: string, tokens: Credentials) {
   try {
-    // Get the cookies instance
     const cookieStore = await cookies();
     
     // Store tokens in a secure HTTP-only cookie
@@ -24,33 +23,21 @@ export async function storeTokens(userId: string, tokens: Credentials) {
 
 export async function getStoredTokens(userId: string): Promise<Credentials | null> {
   try {
-    // Get the cookies instance
     const cookieStore = await cookies();
-    const tokenStr = await cookieStore.get(`${TOKEN_PREFIX}${userId}`)?.value;
+    const tokenCookie = await cookieStore.get(`${TOKEN_PREFIX}${userId}`);
     
-    if (!tokenStr) {
+    if (!tokenCookie?.value) {
       return null;
     }
 
-    return JSON.parse(tokenStr);
+    return JSON.parse(tokenCookie.value);
   } catch (error) {
     console.error("Failed to get tokens:", error);
     return null;
   }
 }
 
-export async function removeTokens(userId: string) {
-  try {
-    // Get the cookies instance
-    const cookieStore = await cookies();
-    
-    // Remove the cookie by setting it to expire immediately
-    await cookieStore.set(`${TOKEN_PREFIX}${userId}`, "", {
-      expires: new Date(0),
-      path: "/"
-    });
-  } catch (error) {
-    console.error("Failed to remove tokens:", error);
-    throw error;
-  }
+export async function removeTokens(userId: string): Promise<void> {
+  const cookieStore = await cookies();
+  await cookieStore.delete(`${TOKEN_PREFIX}${userId}`);
 }

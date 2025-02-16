@@ -1,4 +1,7 @@
-export async function POST() {
+import { auth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {

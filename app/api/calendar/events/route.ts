@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     const calendar = await initGoogleCalendar();
     if (!calendar) {
       return NextResponse.json(
-        { error: "Calendar not connected" },
+        { error: "Calendar not connected or needs reauthorization. Please reconnect your calendar." },
         { status: 401 }
       );
     }
@@ -41,49 +41,25 @@ export async function GET(req: Request) {
         maxResults: 100,
       });
 
-      const events = response.data.items?.filter((event) =>
-        Boolean(event.start?.dateTime)
-      ) || [];
-
-      return NextResponse.json({ events });
-    } catch (error: unknown) {
-      const calendarError = error as {
-        message?: string;
-        code?: number;
-        status?: number;
-        errors?: unknown[];
-      };
-
-      console.error("Calendar API error details:", {
-        message: calendarError.message,
-        code: calendarError.code,
-        status: calendarError.status,
-        errors: calendarError.errors
+      return NextResponse.json({ 
+        events: response.data.items || [],
+        success: true
       });
 
-      // Handle specific error cases
-      if (calendarError.code === 403) {
-        if (calendarError.message?.includes('API has not been used')) {
-          return NextResponse.json(
-            { error: "Calendar API not enabled. Please contact administrator." },
-            { status: 503 }
-          );
-        }
+    } catch (calendarError: unknown) {
+      console.error("Calendar API error:", calendarError);
+      
+      // Check if user needs to reconnect their calendar
+      if ((calendarError as any).code === 401) {
         return NextResponse.json(
-          { error: "Calendar access denied" },
-          { status: 403 }
-        );
-      }
-
-      if (calendarError.code === 401) {
-        return NextResponse.json(
-          { error: "Calendar authentication failed" },
+          { error: "Calendar authentication expired. Please reconnect." },
           { status: 401 }
         );
       }
 
-      throw error;
+      throw calendarError; // Let outer catch handle other errors
     }
+
   } catch (error) {
     console.error("Failed to fetch events:", error);
     return NextResponse.json(
