@@ -1,8 +1,19 @@
 'use client';
 
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: () => void;
+}
+
 // Simple audio transcription using the Web Speech API as a fallback
 class WebSpeechTranscriber {
-  private static recognition: any = null;
+  private static recognition: SpeechRecognitionInstance | null = null;
   public static isRecognizing = false;
 
   static initialize() {
@@ -36,14 +47,21 @@ export type TranscriptionCallback = (result: TranscriptionResult) => void;
 
 interface SpeechRecognitionEvent {
   resultIndex: number;
-  results: {
-    [index: number]: {
-      [index: number]: {
-        transcript: string;
-      };
-      isFinal: boolean;
-    };
-  };
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
 }
 
 interface SpeechRecognitionErrorEvent {

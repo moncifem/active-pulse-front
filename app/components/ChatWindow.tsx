@@ -3,16 +3,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Message } from '../types/chat';
 import VoiceInput from './VoiceInput';
-import { synthesizeSpeech } from '../utils/textToSpeech';
 
 interface ChatWindowProps {
   messages: Message[];
   onSendMessage: (message: string, fromVoice?: boolean) => void;
-}
-
-interface AudioState {
-  isPlaying: string | null;
-  isGenerating: string | null;
 }
 
 export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps) {
@@ -20,19 +14,6 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
   const [interimTranscript, setInterimTranscript] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isListening, setIsListening] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [audioState, setAudioState] = useState<AudioState>({
-    isPlaying: null,
-    isGenerating: null
-  });
-
-  const handleAudioEnd = useCallback(() => {
-    setAudioState(prev => ({ ...prev, isPlaying: null }));
-    if (audioRef.current?.src) {
-      URL.revokeObjectURL(audioRef.current.src);
-      audioRef.current.src = '';
-    }
-  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,12 +48,6 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900">
-      <audio 
-        ref={audioRef} 
-        onEnded={handleAudioEnd}
-        onError={handleAudioEnd}
-        className="hidden"
-      />
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.map((message, index) => (
           <div
