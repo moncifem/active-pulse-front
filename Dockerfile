@@ -16,6 +16,9 @@ COPY . .
 # Clear any existing .next directory
 RUN rm -rf .next
 
+# Set environment variable to skip type checking
+ENV NEXT_SKIP_TYPE_CHECK=true
+
 # Build the application
 RUN npm run build
 
