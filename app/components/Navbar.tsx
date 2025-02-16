@@ -12,10 +12,10 @@ export default function Navbar() {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 z-50">
-      <div className="max-w-7xl mx-auto px-3 md:px-4 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-4">
+    <nav className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow z-50">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex justify-between h-16">
+          <div className="flex">
             <Link href="/" className="flex items-center space-x-2">
               <svg 
                 className="w-7 h-7 md:w-8 md:h-8 text-blue-600 dark:text-blue-400" 
@@ -64,6 +64,12 @@ export default function Navbar() {
                   }`}
                 >
                   Settings
+                </Link>
+                <Link
+                  href="/motivation"
+                  className="ml-8 inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 dark:text-gray-100"
+                >
+                  Motivation
                 </Link>
               </div>
             )}

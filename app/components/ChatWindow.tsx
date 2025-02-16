@@ -61,7 +61,7 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
     }
   }, []);
 
-  const playAudioResponse = async (text: string, messageId: string) => {
+  const playAudioResponse = useCallback(async (text: string, messageId: string) => {
     try {
       if (!text?.trim() || audioState.isPlaying || audioState.isGenerating) return;
 
@@ -103,7 +103,7 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
         isPlaying: null
       }));
     }
-  };
+  }, [audioState.isGenerating, audioRef]);
 
   const processAudioQueue = useCallback(async () => {
     if (audioQueue.current.length === 0 || audioState.isGenerating) return;
@@ -144,7 +144,7 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
       messageJustAdded.current = false;
       return;
     }
-  }, [messages, messageJustAdded]);
+  }, [messages, messageJustAdded, playAudioResponse]);
 
   useEffect(() => {
     if (!isFirstRender.current) {
@@ -234,142 +234,4 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
                 message.role === 'user'
                   ? 'bg-blue-600 text-white dark:bg-blue-700'
                   : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-              } shadow-sm hover:shadow-md transition-shadow duration-200`}
-            >
-              <p className="whitespace-pre-wrap text-[15px] leading-relaxed">
-                {message.content}
-              </p>
-              <span className={`text-xs mt-2 block opacity-70 ${
-                message.role === 'user' 
-                  ? 'text-blue-100' 
-                  : 'text-gray-500'
-              }`}>
-                {new Date(message.timestamp).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </span>
-            </div>
-            {message.role === 'user' && (
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center ml-2 md:ml-3 mt-1 flex-shrink-0">
-                <svg 
-                  className="w-5 h-5 text-white" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              </div>
-            )}
-            {message.role === 'assistant' && (
-              <div className="flex items-center">
-                <button
-                  onClick={() => playAudioResponse(message.content, message.timestamp)}
-                  disabled={audioState.isPlaying === message.timestamp || audioState.isGenerating === message.timestamp}
-                  className="ml-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
-                >
-                  {audioState.isGenerating === message.timestamp ? (
-                    <div className="w-4 h-4 flex items-center justify-center">
-                      <LoadingWaveform />
-                    </div>
-                  ) : audioState.isPlaying === message.timestamp ? (
-                    <svg
-                      className="w-4 h-4 text-blue-600 dark:text-blue-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5.25 8.25h2.5m9.5 0h2.5m-16 4h2.5m9.5 0h2.5m-16 4h2.5m9.5 0h2.5"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="w-4 h-4 text-gray-500 dark:text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                      />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-      <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-4 bg-white dark:bg-gray-900">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          <div className="flex flex-col space-y-2">
-            {/* Show interim transcript */}
-            {isListening && interimTranscript && (
-              <div className="text-sm text-gray-500 dark:text-gray-400 italic px-3">
-                {interimTranscript}
-              </div>
-            )}
-            <div className="flex items-center space-x-2 md:space-x-4">
-              <div className="flex-1 flex items-center space-x-2 md:space-x-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 pr-2 md:pr-4">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="flex-1 px-3 md:px-4 py-2 md:py-3 bg-transparent focus:outline-none text-gray-700 dark:text-gray-200 text-sm md:text-base rounded-xl"
-                  placeholder={isListening ? 'Listening...' : 'Type your message...'}
-                  disabled={isListening}
-                />
-                <VoiceInput
-                  onTranscription={handleVoiceInput}
-                  onInterimTranscript={handleInterimTranscript}
-                  isListening={isListening}
-                  setIsListening={setIsListening}
-                  disabled={input.trim().length > 0}
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={(!input.trim() && !interimTranscript) || isListening}
-                className={`px-4 py-2 bg-blue-600 text-white rounded-lg transition-colors duration-200 flex items-center space-x-2 ${
-                  (!input.trim() && !interimTranscript) || isListening
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : 'hover:bg-blue-700'
-                }`}
-              >
-                <span>Send</span>
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-} 
+              } shadow-sm hover:shadow-md transition-shadow duration-200`

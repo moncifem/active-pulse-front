@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { initGoogleCalendar } from "@/app/utils/googleCalendar";
 import { add, parse } from "date-fns";
-import { zonedTimeToUtc } from "date-fns-tz";
+import { parseISO } from 'date-fns';
 
 export async function POST(req: Request) {
   try {
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
     // Parse the date and time in CET timezone
     const dateTime = parse(`${date} ${time}`, 'dd/MM/yyyy HH:mm', new Date());
-    const utcDateTime = zonedTimeToUtc(dateTime, 'Europe/Paris');
+    const utcDateTime = parseISO(dateTime.toISOString());
 
     const event = {
       summary: `Meeting with ${email}`,
