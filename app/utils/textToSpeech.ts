@@ -1,6 +1,12 @@
 import { ZyphraClient } from '@zyphra/client';
 
-const client = new ZyphraClient({ apiKey: process.env.NEXT_PUBLIC_ZYPHRA_API_KEY });
+if (!process.env.NEXT_PUBLIC_ZYPHRA_API_KEY) {
+  throw new Error('Missing Zyphra API key');
+}
+
+const client = new ZyphraClient({ 
+  apiKey: process.env.NEXT_PUBLIC_ZYPHRA_API_KEY as string 
+});
 const audioCache = new Map<string, Blob>();
 
 export async function synthesizeSpeech(text: string, messageId: string): Promise<Blob> {
@@ -28,7 +34,9 @@ export async function synthesizeSpeech(text: string, messageId: string): Promise
     // Limit cache size
     if (audioCache.size > 20) {
       const firstKey = audioCache.keys().next().value;
-      audioCache.delete(firstKey);
+      if (firstKey) {
+        audioCache.delete(firstKey);
+      }
     }
 
     return audioBlob;
