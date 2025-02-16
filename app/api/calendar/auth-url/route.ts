@@ -5,7 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  `${process.env.NEXT_PUBLIC_APP_URL}/api/callback`
+  `${process.env.NEXT_PUBLIC_APP_URL}${process.env.GOOGLE_CALLBACK_URL || '/google-callback'}`
 );
 
 export async function GET() {

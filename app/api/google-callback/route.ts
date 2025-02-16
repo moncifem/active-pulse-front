@@ -6,7 +6,7 @@ import { storeTokens } from "@/app/utils/tokenStorage";
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  `${process.env.NEXT_PUBLIC_APP_URL}/api/callback`
+  `${process.env.NEXT_PUBLIC_APP_URL}${process.env.GOOGLE_CALLBACK_URL || '/google-callback'}`
 );
 
 interface TokenError extends Error {
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     const error = searchParams.get("error");
 
     console.log("OAuth Config:", {
-      redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/callback`,
+      redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}${process.env.GOOGLE_CALLBACK_URL}`,
       hasClientId: !!process.env.GOOGLE_CLIENT_ID,
       hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
     });
@@ -87,4 +87,4 @@ export async function GET(req: Request) {
       new URL(`${process.env.NEXT_PUBLIC_APP_URL}/error?reason=token_exchange`)
     );
   }
-}
+} 
