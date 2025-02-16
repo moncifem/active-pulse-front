@@ -46,7 +46,14 @@ export async function GET(req: Request) {
       ) || [];
 
       return NextResponse.json({ events });
-    } catch (calendarError: Error & { code?: number; status?: number; errors?: unknown[] }) {
+    } catch (error: unknown) {
+      const calendarError = error as {
+        message?: string;
+        code?: number;
+        status?: number;
+        errors?: unknown[];
+      };
+
       console.error("Calendar API error details:", {
         message: calendarError.message,
         code: calendarError.code,
@@ -75,7 +82,7 @@ export async function GET(req: Request) {
         );
       }
 
-      throw calendarError;
+      throw error;
     }
   } catch (error) {
     console.error("Failed to fetch events:", error);

@@ -21,10 +21,11 @@ class WebSpeechTranscriber {
       // @ts-expect-error - Web Speech API types not available
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
-        WebSpeechTranscriber.recognition = new SpeechRecognition();
-        WebSpeechTranscriber.recognition.continuous = true;
-        WebSpeechTranscriber.recognition.interimResults = true;
-        WebSpeechTranscriber.recognition.lang = 'en-US';
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        WebSpeechTranscriber.recognition = recognition;
       }
     }
     return WebSpeechTranscriber.recognition;
