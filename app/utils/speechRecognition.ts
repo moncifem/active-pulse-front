@@ -3,7 +3,7 @@
 // Simple audio transcription using the Web Speech API as a fallback
 class WebSpeechTranscriber {
   private static recognition: any = null;
-  private static isRecognizing: boolean = false;
+  public static isRecognizing = false;
 
   static initialize() {
     if (!WebSpeechTranscriber.recognition && typeof window !== 'undefined') {
