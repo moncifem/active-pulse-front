@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { Message } from '../types/chat';
+import { Message } from '@/app/types/chat';
 import { auth } from '@clerk/nextjs/server';
 
 // Initialize OpenAI client
