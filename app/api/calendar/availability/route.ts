@@ -2,9 +2,6 @@ import { parse, add } from "date-fns";
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from "next/server";
 import { initGoogleCalendar } from "@/app/utils/googleCalendar";
-import { google } from 'googleapis';
-import { format } from "date-fns";
-import { zonedTimeToUtc, utcToZonedTime } from "date-fns-tz";
 
 const AVAILABLE_SLOTS = ["08:00", "08:20", "08:40", "09:00", "09:20", "09:40"];
 

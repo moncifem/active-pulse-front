@@ -15,21 +15,6 @@ interface AudioState {
   isGenerating: string | null;
 }
 
-// Add a new icon component for the loading state
-const LoadingWaveform = () => (
-  <div className="flex items-center space-x-0.5 animate-pulse">
-    {[...Array(3)].map((_, i) => (
-      <div 
-        key={i} 
-        className="w-0.5 h-3 bg-blue-600 dark:bg-blue-400 rounded-full" 
-        style={{
-          animation: `waveform 1s ease-in-out ${i * 0.2}s infinite`,
-        }}
-      />
-    ))}
-  </div>
-);
-
 export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps) {
   const [input, setInput] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -48,47 +33,6 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
       audioRef.current.src = '';
     }
   }, []);
-
-  const playAudioResponse = useCallback(async (text: string, messageId: string) => {
-    try {
-      if (!text?.trim() || audioState.isPlaying || audioState.isGenerating) return;
-
-      setAudioState(prev => ({ ...prev, isGenerating: messageId }));
-
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        if (audioRef.current.src) {
-          URL.revokeObjectURL(audioRef.current.src);
-          audioRef.current.src = '';
-        }
-      }
-
-      const audioBlob = await synthesizeSpeech(text, messageId);
-      
-      if (!audioBlob) {
-        throw new Error('Failed to generate audio');
-      }
-
-      const audioUrl = URL.createObjectURL(audioBlob);
-      
-      setAudioState({
-        isGenerating: null,
-        isPlaying: messageId
-      });
-
-      if (audioRef.current) {
-        audioRef.current.src = audioUrl;
-        await audioRef.current.play();
-      }
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      setAudioState({
-        isGenerating: null,
-        isPlaying: null
-      });
-    }
-  }, [audioState.isGenerating, audioState.isPlaying, audioRef]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

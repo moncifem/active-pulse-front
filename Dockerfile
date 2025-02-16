@@ -13,11 +13,17 @@ RUN npm install
 # Copy the rest of the application
 COPY . .
 
-# Build with error handling
-RUN npm run build || exit 0
+# Clear any existing .next directory
+RUN rm -rf .next
 
-# Expose the port the app runs on
-EXPOSE 3000
+# Build the application
+RUN npm run build
+
+# Expose the correct port
+EXPOSE 8000
+
+# Set the port environment variable
+ENV PORT=8000
 
 # Start the application
 CMD ["npm", "start"] 

@@ -9,6 +9,13 @@ const oauth2Client = new google.auth.OAuth2(
   `${process.env.NEXT_PUBLIC_APP_URL}/api/callback`
 );
 
+interface TokenError extends Error {
+  response?: {
+    data?: unknown;
+    status?: number;
+  };
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -65,13 +72,14 @@ export async function GET(req: Request) {
       return NextResponse.redirect(
         new URL(`${process.env.NEXT_PUBLIC_APP_URL}/configuration`)
       );
-    } catch (tokenError: any) {
+    } catch (tokenError: unknown) {
+      const error = tokenError as TokenError;
       console.error("Token exchange error details:", {
-        message: tokenError.message,
-        response: tokenError.response?.data,
-        status: tokenError.response?.status,
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
       });
-      throw tokenError;
+      throw error;
     }
   } catch (error) {
     console.error("Token exchange failed:", error);
