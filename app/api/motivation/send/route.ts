@@ -8,9 +8,13 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
-const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER;
-const MY_WHATSAPP_NUMBER = process.env.MY_WHATSAPP_NUMBER;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER as string;
+const MY_WHATSAPP_NUMBER = process.env.MY_WHATSAPP_NUMBER as string;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL as string;
+
+if (!TWILIO_WHATSAPP_NUMBER || !MY_WHATSAPP_NUMBER || !APP_URL) {
+  throw new Error('Missing required environment variables');
+}
 
 export async function POST(req: Request) {
   try {

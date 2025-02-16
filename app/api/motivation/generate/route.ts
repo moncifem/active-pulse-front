@@ -10,6 +10,14 @@ const openai = new OpenAI({
 // Your WhatsApp number with country code, e.g., "33612345678" for France
 const WHATSAPP_NUMBER = process.env.WHATSAPP_NUMBER;
 
+interface CalendarEvent {
+  summary?: string | null;
+  start: {
+    dateTime?: string | null;
+    date?: string | null;
+  };
+}
+
 export async function POST() {
   try {
     const { userId } = await auth();
@@ -22,7 +30,7 @@ export async function POST() {
 
     // Get today's calendar events
     const calendar = await initGoogleCalendar();
-    let todaysEvents = [];
+    let todaysEvents: CalendarEvent[] = [];
     
     if (calendar) {
       const today = new Date();
@@ -38,7 +46,7 @@ export async function POST() {
         orderBy: "startTime",
       });
 
-      todaysEvents = response.data.items || [];
+      todaysEvents = (response.data.items || []) as CalendarEvent[];
     }
 
     // Generate motivational message
@@ -54,7 +62,7 @@ export async function POST() {
       max_tokens: 150,
     });
 
-    const motivationalText = completion.choices[0].message.content;
+    const motivationalText = completion.choices[0].message.content || '';
 
     // Generate audio from the text
     const audioResponse = await openai.audio.speech.create({
@@ -70,8 +78,8 @@ export async function POST() {
     const eventsText = todaysEvents.length > 0 
       ? "\n\nToday's Events:\n" + todaysEvents
           .map(event => {
-            const start = new Date(event.start.dateTime || event.start.date);
-            return `• ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${event.summary}`;
+            const start = new Date(event.start.dateTime || event.start.date || new Date().toISOString());
+            return `• ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${event.summary || 'Untitled Event'}`;
           })
           .join("\n")
       : "\n\nNo events scheduled for today.";
