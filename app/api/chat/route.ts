@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { Message } from '../types/chat';
+import { auth } from '@clerk/nextjs/server';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -9,6 +10,12 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
+    const { userId, sessionId } = await auth();
+
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
     const { message, conversationHistory } = await req.json();
 
     // Convert conversation history to OpenAI format
@@ -28,7 +35,7 @@ export async function POST(req: Request) {
       messages: messages,
       temperature: 0.7,
       max_tokens: 150,
-      stream: true, // Enable streaming
+      stream: true,
     });
 
     // Create a new ReadableStream

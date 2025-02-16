@@ -8,18 +8,43 @@ import { Conversation, Message } from '../types/chat';
 import { saveToLocalStorage, getFromLocalStorage } from '../utils/storage';
 import Navbar from '../components/Navbar';
 import EmptyState from '../components/EmptyState';
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 export default function ChatPage() {
+  const { isLoaded, userId, isSignedIn } = useAuth();
+  const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedConversations = getFromLocalStorage();
-    setConversations(savedConversations);
-    if (savedConversations.length > 0) {
-      setActiveConversation(savedConversations[0].id);
+    if (isLoaded) {
+      if (!isSignedIn) {
+        router.push('/sign-in');
+      } else {
+        setIsLoading(false);
+      }
     }
-  }, []);
+  }, [isLoaded, isSignedIn, router]);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      const savedConversations = getFromLocalStorage();
+      setConversations(savedConversations);
+      if (savedConversations.length > 0) {
+        setActiveConversation(savedConversations[0].id);
+      }
+    }
+  }, [isSignedIn]);
+
+  if (!isLoaded || isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
+      </div>
+    );
+  }
 
   const createNewConversation = () => {
     const newConversation: Conversation = {
@@ -42,24 +67,27 @@ export default function ChatPage() {
     saveToLocalStorage(newConversations);
   };
 
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, fromVoice = false) => {
     if (!activeConversation) return;
 
     const userMessage: Message = {
       role: 'user',
       content,
       timestamp: new Date().toISOString(),
+      fromVoice,
     };
 
-    // Create a temporary assistant message for streaming
     const assistantMessage: Message = {
       role: 'assistant',
       content: '',
       timestamp: new Date().toISOString(),
+      fromVoice,
+      isComplete: false,
+      requiresAudio: fromVoice
     };
 
-    // Create a new reference to the updated conversations
-    const updatedConversations = conversations.map((conv) => {
+    // Create a new reference for the updated conversations
+    const newConversations = conversations.map((conv) => {
       if (conv.id === activeConversation) {
         return {
           ...conv,
@@ -69,7 +97,8 @@ export default function ChatPage() {
       return conv;
     });
 
-    setConversations(updatedConversations);
+    // Update state immediately with the new conversations
+    setConversations(newConversations);
 
     try {
       const response = await fetch('/api/chat', {
@@ -79,61 +108,70 @@ export default function ChatPage() {
         },
         body: JSON.stringify({
           message: content,
-          conversationHistory: updatedConversations.find(
+          conversationHistory: newConversations.find(
             (conv) => conv.id === activeConversation
           )?.messages.slice(0, -1) || [],
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to send message');
+      if (!response.ok) {
+        const errorDetails = await response.json();
+        throw new Error(`Failed to send message: ${errorDetails.error}`);
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No reader available');
 
       let streamedContent = '';
+      let lastUpdate = Date.now();
+      const updateInterval = 50; // Update UI every 50ms
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        
+        if (done) {
+          // Immediately mark as complete when stream ends
+          const finalConversations = newConversations.map((conv) => {
+            if (conv.id === activeConversation) {
+              const messages = [...conv.messages];
+              messages[messages.length - 1] = {
+                ...assistantMessage,
+                content: streamedContent,
+                isComplete: true,
+                timestamp: new Date().toISOString(),
+              };
+              return { ...conv, messages };
+            }
+            return conv;
+          });
+          setConversations(finalConversations);
+          saveToLocalStorage(finalConversations);
+          break;
+        }
 
         const text = new TextDecoder().decode(value);
         streamedContent += text;
 
-        const streamedConversations = updatedConversations.map((conv) => {
-          if (conv.id === activeConversation) {
-            const messages = [...conv.messages];
-            messages[messages.length - 1] = {
-              ...assistantMessage,
-              content: streamedContent,
-            };
-            return {
-              ...conv,
-              messages,
-            };
-          }
-          return conv;
-        });
-
-        setConversations(streamedConversations);
-      }
-
-      saveToLocalStorage(updatedConversations.map((conv) => {
-        if (conv.id === activeConversation) {
-          const messages = [...conv.messages];
-          messages[messages.length - 1] = {
-            ...assistantMessage,
-            content: streamedContent,
-          };
-          return {
-            ...conv,
-            messages,
-          };
+        // Throttle UI updates to prevent excessive renders
+        if (Date.now() - lastUpdate > updateInterval) {
+          const streamedConversations = newConversations.map((conv) => {
+            if (conv.id === activeConversation) {
+              const messages = [...conv.messages];
+              messages[messages.length - 1] = {
+                ...assistantMessage,
+                content: streamedContent,
+              };
+              return { ...conv, messages };
+            }
+            return conv;
+          });
+          setConversations(streamedConversations);
+          lastUpdate = Date.now();
         }
-        return conv;
-      }));
+      }
     } catch (error) {
       console.error('Error sending message:', error);
-      const errorConversations = updatedConversations.map((conv) => {
+      const errorConversations = newConversations.map((conv) => {
         if (conv.id === activeConversation) {
           return {
             ...conv,
@@ -150,7 +188,7 @@ export default function ChatPage() {
   const activeChat = conversations.find((conv) => conv.id === activeConversation);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+    <div className="h-screen flex flex-col overflow-hidden bg-white dark:bg-gray-900">
       <Navbar />
       <main className="flex-1 flex overflow-hidden pt-16">
         <aside className={`
@@ -159,7 +197,7 @@ export default function ChatPage() {
           transform transition-transform duration-200 ease-in-out
           ${activeConversation ? '-translate-x-full md:translate-x-0' : 'translate-x-0'}
         `}>
-          <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
             <button
               onClick={createNewConversation}
               className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center justify-center space-x-2 group"
@@ -195,14 +233,14 @@ export default function ChatPage() {
           </div>
         </aside>
 
-        <div className="flex-1 flex flex-col overflow-hidden bg-white relative">
-          <div className="md:hidden absolute top-0 left-0 right-0 z-10 bg-white border-b border-gray-200 px-4 py-2">
+        <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-900 relative">
+          <div className="md:hidden absolute top-0 left-0 right-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
             <button
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
               onClick={() => setActiveConversation(null)}
-              className="p-2 rounded-lg hover:bg-gray-100"
             >
               <svg
-                className="w-6 h-6 text-gray-600"
+                className="w-6 h-6 text-gray-600 dark:text-gray-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -219,11 +257,11 @@ export default function ChatPage() {
 
           {activeChat ? (
             <>
-              <header className="hidden md:block border-b border-gray-200 px-6 py-4 bg-white flex-shrink-0">
-                <h2 className="text-lg font-semibold text-gray-800">
+              <header className="hidden md:block border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-gray-900 flex-shrink-0">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
                   {activeChat.title}
                 </h2>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {new Date(activeChat.createdAt).toLocaleDateString()} · {activeChat.messages.length} messages
                 </p>
               </header>

@@ -1,88 +1,91 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { startTranscription, stopTranscription, TranscriptionResult } from '../utils/speechRecognition';
+import { startTranscription, stopTranscription } from '../utils/speechRecognition';
 
 interface VoiceInputProps {
   onTranscription: (text: string) => void;
   isListening: boolean;
   setIsListening: (isListening: boolean) => void;
+  disabled?: boolean;
+  onInterimTranscript?: (text: string) => void;
 }
 
-export default function VoiceInput({ onTranscription, isListening, setIsListening }: VoiceInputProps) {
+export default function VoiceInput({ 
+  onTranscription, 
+  isListening, 
+  setIsListening,
+  disabled,
+  onInterimTranscript 
+}: VoiceInputProps) {
   const [error, setError] = useState<string>('');
-  const [interimText, setInterimText] = useState<string>('');
-  const finalTextRef = useRef<string>('');
-  const isProcessingRef = useRef<boolean>(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasSpokenRef = useRef<boolean>(false);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopTranscription();
-    };
-  }, []);
-
-  const handleTranscriptionResult = (result: TranscriptionResult) => {
-    if (result.isFinal) {
-      setInterimText('');
-      if (result.text.trim()) {
-        finalTextRef.current += ' ' + result.text.trim();
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
-    } else {
-      setInterimText(result.text);
-    }
-  };
+      stopTranscription();
+      setIsListening(false);
+    };
+  }, [setIsListening]);
 
   const startRecording = async () => {
+    if (disabled) return;
+    
     try {
-      isProcessingRef.current = false;
-      finalTextRef.current = ''; // Reset the final text
-      setIsListening(true);
       setError('');
-      setInterimText('');
-      await startTranscription(handleTranscriptionResult);
+      hasSpokenRef.current = false;
+      setIsListening(true);
+
+      timeoutRef.current = setTimeout(() => {
+        if (!hasSpokenRef.current) {
+          stopRecording();
+          setError('No speech detected. Please try again.');
+        }
+      }, 5000);
+
+      await startTranscription((result) => {
+        hasSpokenRef.current = true;
+        // Show interim results
+        if (onInterimTranscript && !result.isFinal) {
+          onInterimTranscript(result.text);
+        }
+        // Handle final results
+        if (result.isFinal && result.text.trim()) {
+          onTranscription(result.text.trim());
+          stopRecording();
+        }
+      });
     } catch (err) {
       console.error('Speech recognition error:', err);
-      setError('Could not access microphone or speech recognition');
+      setError('Could not access microphone. Please check permissions.');
       setIsListening(false);
     }
   };
 
-  const stopRecording = async () => {
-    if (isProcessingRef.current) return;
-    isProcessingRef.current = true;
-
-    try {
-      stopTranscription();
-      setIsListening(false);
-      setInterimText('');
-      
-      // Small delay to ensure all final results are captured
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Send the accumulated final text to the model
-      const finalText = finalTextRef.current.trim();
-      if (finalText) {
-        console.log('Sending transcribed text:', finalText); // Debug log
-        onTranscription(finalText);
-        finalTextRef.current = ''; // Reset after sending
-      }
-    } catch (error) {
-      console.error('Error stopping recording:', error);
-      setError('Error processing speech');
-    } finally {
-      isProcessingRef.current = false;
+  const stopRecording = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
+    stopTranscription();
+    setIsListening(false);
   };
 
   return (
     <div className="relative">
       <button
+        type="button" // Prevent form submission
         onClick={isListening ? stopRecording : startRecording}
-        className={`p-2 rounded-lg transition-all duration-200 ${
-          isListening 
-            ? 'bg-red-100 text-red-600 hover:bg-red-200' 
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        disabled={disabled}
+        className={`p-2 rounded-full transition-colors dark:hover:bg-gray-700 ${
+          disabled 
+            ? 'opacity-50 cursor-not-allowed'
+            : isListening 
+              ? 'text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30'
+              : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100'
         }`}
         title={isListening ? 'Stop recording' : 'Start recording'}
       >
@@ -103,13 +106,8 @@ export default function VoiceInput({ onTranscription, isListening, setIsListenin
           />
         </svg>
       </button>
-      {interimText && (
-        <div className="absolute bottom-full left-0 mb-2 text-sm text-gray-600 whitespace-nowrap bg-gray-50 px-3 py-2 rounded-lg shadow-sm border border-gray-200 max-w-xs overflow-hidden">
-          {interimText}
-        </div>
-      )}
       {error && (
-        <div className="absolute bottom-full left-0 mb-2 text-sm text-red-500 whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm border border-red-100">
+        <div className="absolute bottom-full left-0 mb-2 text-sm text-red-500 whitespace-nowrap bg-white dark:bg-gray-800 px-2 py-1 rounded shadow-sm border border-red-100 dark:border-red-900">
           {error}
         </div>
       )}
