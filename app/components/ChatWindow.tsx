@@ -72,10 +72,10 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
 
       const audioUrl = URL.createObjectURL(audioBlob);
       
-      setAudioState(prev => ({
+      setAudioState({
         isGenerating: null,
         isPlaying: messageId
-      }));
+      });
 
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
@@ -83,12 +83,12 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
       }
     } catch (error) {
       console.error('Error playing audio:', error);
-      setAudioState(prev => ({
+      setAudioState({
         isGenerating: null,
         isPlaying: null
-      }));
+      });
     }
-  }, [audioState.isGenerating, audioRef]);
+  }, [audioState.isGenerating, audioState.isPlaying, audioRef]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

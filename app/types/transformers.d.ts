@@ -1,5 +1,5 @@
 declare module '@xenova/transformers' {
-  export const pipeline: any;
+  export const pipeline: unknown;
   export const env: {
     useBrowserCache: boolean;
     allowLocalModels: boolean;
@@ -11,4 +11,6 @@ declare module '@xenova/transformers' {
       };
     };
   };
-} 
+}
+
+export type Pipeline = unknown; 

@@ -8,7 +8,7 @@ export default function SignInPage() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <nav className="bg-white border-b border-gray-200 h-16">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center">
-          <a href="/" className="flex items-center space-x-2">
+          <Link href="/" className="flex items-center space-x-2">
             <svg 
               className="w-8 h-8 text-blue-600" 
               fill="none" 
@@ -23,7 +23,7 @@ export default function SignInPage() {
               />
             </svg>
             <span className="text-xl font-bold text-gray-800">AI Chat</span>
-          </a>
+          </Link>
         </div>
       </nav>
       

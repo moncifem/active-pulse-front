@@ -7,7 +7,7 @@ class WebSpeechTranscriber {
 
   static initialize() {
     if (!WebSpeechTranscriber.recognition && typeof window !== 'undefined') {
-      // @ts-ignore
+      // @ts-expect-error - Web Speech API types not available
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         WebSpeechTranscriber.recognition = new SpeechRecognition();
@@ -34,6 +34,22 @@ export type TranscriptionResult = {
 
 export type TranscriptionCallback = (result: TranscriptionResult) => void;
 
+interface SpeechRecognitionEvent {
+  resultIndex: number;
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+      isFinal: boolean;
+    };
+  };
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+}
+
 export function startTranscription(onTranscribe: TranscriptionCallback): Promise<void> {
   return new Promise((resolve, reject) => {
     const recognition = WebSpeechTranscriber.initialize();
@@ -42,7 +58,7 @@ export function startTranscription(onTranscribe: TranscriptionCallback): Promise
       return;
     }
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interimTranscript = '';
       let finalTranscript = '';
 
@@ -72,7 +88,7 @@ export function startTranscription(onTranscribe: TranscriptionCallback): Promise
       }
     };
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error);
       WebSpeechTranscriber.isRecognizing = false;
       reject(new Error('Failed to recognize speech'));

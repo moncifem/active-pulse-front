@@ -46,7 +46,7 @@ export async function GET(req: Request) {
       ) || [];
 
       return NextResponse.json({ events });
-    } catch (calendarError: any) {
+    } catch (calendarError: Error & { code?: number; status?: number; errors?: unknown[] }) {
       console.error("Calendar API error details:", {
         message: calendarError.message,
         code: calendarError.code,

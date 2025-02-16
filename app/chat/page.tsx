@@ -12,7 +12,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
 export default function ChatPage() {
-  const { isLoaded, userId, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
