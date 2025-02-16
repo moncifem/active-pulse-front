@@ -3,18 +3,15 @@ import twilio from "twilio";
 import { auth } from "@clerk/nextjs/server";
 import { saveAudio } from "@/app/utils/audioStorage";
 
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+// Initialize Twilio client only if credentials are available
+const client = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
+  ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+  : null;
 
-const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER as string;
-const MY_WHATSAPP_NUMBER = process.env.MY_WHATSAPP_NUMBER as string;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL as string;
-
-if (!TWILIO_WHATSAPP_NUMBER || !MY_WHATSAPP_NUMBER || !APP_URL) {
-  throw new Error('Missing required environment variables');
-}
+// Get environment variables with fallbacks
+const TWILIO_WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER;
+const MY_WHATSAPP_NUMBER = process.env.MY_WHATSAPP_NUMBER;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
 
 export async function POST(req: Request) {
   try {
@@ -24,6 +21,15 @@ export async function POST(req: Request) {
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Check if WhatsApp functionality is configured
+    if (!client || !TWILIO_WHATSAPP_NUMBER || !MY_WHATSAPP_NUMBER || !APP_URL) {
+      console.warn('WhatsApp messaging is not configured');
+      return NextResponse.json({ 
+        success: false,
+        warning: "WhatsApp messaging is not configured",
+      });
     }
 
     const { text, audio } = await req.json();
@@ -38,11 +44,9 @@ export async function POST(req: Request) {
     // Send the audio if available
     if (audio) {
       try {
-        // Save audio locally and get its URL
         const audioPath = await saveAudio(audio, userId);
         const audioUrl = `${APP_URL}${audioPath}`;
 
-        // Send audio message via Twilio
         await client.messages.create({
           body: "🎤 Your motivational message (voice)",
           mediaUrl: [audioUrl],
