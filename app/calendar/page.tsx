@@ -50,16 +50,20 @@ export default function CalendarPage() {
         }
       );
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
         if (response.status === 401) {
           router.push('/configuration');
+          return;
+        }
+        if (response.status === 503) {
+          setError("Calendar API is not enabled. Please try again in a few minutes.");
           return;
         }
         throw new Error(data.error || 'Failed to fetch events');
       }
 
-      const data = await response.json();
       setEvents(data.events || []);
     } catch (error) {
       console.error('Error fetching events:', error);

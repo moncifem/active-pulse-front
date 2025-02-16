@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
     try {
       const response = await calendar.events.list({
-        calendarId: 'primary', // Use 'primary' instead of env variable
+        calendarId: 'primary',
         timeMin: start,
         timeMax: end,
         singleEvents: true,
@@ -47,16 +47,35 @@ export async function GET(req: Request) {
 
       return NextResponse.json({ events });
     } catch (calendarError: any) {
-      console.error("Calendar API error:", calendarError);
-      
-      if (calendarError.code === 401 || calendarError.code === 403) {
+      console.error("Calendar API error details:", {
+        message: calendarError.message,
+        code: calendarError.code,
+        status: calendarError.status,
+        errors: calendarError.errors
+      });
+
+      // Handle specific error cases
+      if (calendarError.code === 403) {
+        if (calendarError.message?.includes('API has not been used')) {
+          return NextResponse.json(
+            { error: "Calendar API not enabled. Please contact administrator." },
+            { status: 503 }
+          );
+        }
+        return NextResponse.json(
+          { error: "Calendar access denied" },
+          { status: 403 }
+        );
+      }
+
+      if (calendarError.code === 401) {
         return NextResponse.json(
           { error: "Calendar authentication failed" },
           { status: 401 }
         );
       }
 
-      throw calendarError; // Re-throw for general error handling
+      throw calendarError;
     }
   } catch (error) {
     console.error("Failed to fetch events:", error);
