@@ -7,7 +7,7 @@ const AVAILABLE_SLOTS = ["08:00", "08:20", "08:40", "09:00", "09:20", "09:40"];
 
 export async function GET(req: Request) {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
