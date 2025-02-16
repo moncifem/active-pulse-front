@@ -2,6 +2,13 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { initGoogleCalendar } from "@/app/utils/googleCalendar";
 
+interface CalendarError {
+  code?: number;
+  message?: string;
+  status?: number;
+  errors?: unknown[];
+}
+
 export async function GET(req: Request) {
   try {
     const { userId } = await auth();
@@ -50,7 +57,7 @@ export async function GET(req: Request) {
       console.error("Calendar API error:", calendarError);
       
       // Check if user needs to reconnect their calendar
-      if ((calendarError as any).code === 401) {
+      if ((calendarError as CalendarError).code === 401) {
         return NextResponse.json(
           { error: "Calendar authentication expired. Please reconnect." },
           { status: 401 }
