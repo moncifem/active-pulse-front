@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Message } from '../types/chat';
 import VoiceInput from './VoiceInput';
-import { synthesizeSpeech, preloadAudio } from '../utils/textToSpeech';
+import { synthesizeSpeech } from '../utils/textToSpeech';
 
 interface ChatWindowProps {
   messages: Message[];
@@ -40,18 +40,6 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
     isPlaying: null,
     isGenerating: null
   });
-  const audioQueue = useRef<{content: string, timestamp: string}[]>([]);
-  const lastProcessedMessageId = useRef<string | null>(null);
-  const pendingMessage = useRef<{content: string, timestamp: string, timeoutId?: number} | null>(null);
-  const isFirstRender = useRef(true);
-  const messageJustAdded = useRef(false);
-  const lastVoiceMessageTimestamp = useRef<string | null>(null);
-  const wasVoiceInput = useRef(false);
-  const [isVoiceResponse, setIsVoiceResponse] = useState(false);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
 
   const handleAudioEnd = useCallback(() => {
     setAudioState(prev => ({ ...prev, isPlaying: null }));
@@ -65,10 +53,8 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
     try {
       if (!text?.trim() || audioState.isPlaying || audioState.isGenerating) return;
 
-      // Set generating state immediately
       setAudioState(prev => ({ ...prev, isGenerating: messageId }));
 
-      // Stop any current playback
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
@@ -86,7 +72,6 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
 
       const audioUrl = URL.createObjectURL(audioBlob);
       
-      // Update state to playing
       setAudioState(prev => ({
         isGenerating: null,
         isPlaying: messageId
@@ -105,57 +90,10 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
     }
   }, [audioState.isGenerating, audioRef]);
 
-  const processAudioQueue = useCallback(async () => {
-    if (audioQueue.current.length === 0 || audioState.isGenerating) return;
-    
-    const { content, timestamp } = audioQueue.current[0];
-    
-    try {
-      await playAudioResponse(content, timestamp);
-      audioQueue.current.shift();
-      lastProcessedMessageId.current = timestamp;
-    } catch (error) {
-      console.error('Error playing audio:', error);
-    }
-  }, [audioState.isGenerating, playAudioResponse]);
-
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-
-    scrollToBottom();
-    
-    const lastMessage = messages[messages.length - 1];
-    if (!lastMessage || 
-        lastMessage.role !== 'assistant' || 
-        lastProcessedMessageId.current === lastMessage.timestamp ||
-        !messageJustAdded.current ||
-        !lastMessage.requiresAudio
-    ) {
-      return;
-    }
-
-    // If message is complete, process immediately
-    if (lastMessage.isComplete) {
-      lastProcessedMessageId.current = lastMessage.timestamp;
-      playAudioResponse(lastMessage.content, lastMessage.timestamp);
-      messageJustAdded.current = false;
-      return;
-    }
-  }, [messages, messageJustAdded, playAudioResponse]);
-
-  useEffect(() => {
-    if (!isFirstRender.current) {
-      messageJustAdded.current = true;
-    }
-  }, [messages.length]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && !isListening) {  // Prevent sending while listening
-      onSendMessage(input.trim(), false); // Explicitly mark as not voice input
+    if (input.trim() && !isListening) {
+      onSendMessage(input.trim(), false);
       setInput('');
     }
   };
@@ -169,7 +107,7 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
 
   const handleVoiceInput = (text: string) => {
     if (text.trim()) {
-      onSendMessage(text.trim(), true);  // Mark as voice input
+      onSendMessage(text.trim(), true);
       setInput('');
       setInterimTranscript('');
     }
@@ -179,22 +117,9 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
     setInterimTranscript(text);
   };
 
-  // Add cleanup
   useEffect(() => {
-    return () => {
-      setIsVoiceResponse(false);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        if (audioRef.current.src) {
-          URL.revokeObjectURL(audioRef.current.src);
-          audioRef.current.src = '';
-        }
-      }
-      audioQueue.current = [];
-      lastProcessedMessageId.current = null;
-      messageJustAdded.current = false;
-    };
-  }, []);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900">
@@ -204,34 +129,53 @@ export default function ChatWindow({ messages, onSendMessage }: ChatWindowProps)
         onError={handleAudioEnd}
         className="hidden"
       />
-      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-8 space-y-4 md:space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`flex ${
-              message.role === 'user' ? 'justify-end' : 'justify-start'
-            } group`}
+            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            {message.role === 'assistant' && (
-              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mr-2 md:mr-3 mt-1 flex-shrink-0">
-                <svg 
-                  className="w-5 h-5 text-blue-600 dark:text-blue-400" 
-                  fill="none"
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-              </div>
-            )}
-            <div
-              className={`max-w-[85%] md:max-w-[80%] rounded-2xl px-4 md:px-5 py-3 md:py-3.5 ${
-                message.role === 'user'
-                  ? 'bg-blue-600 text-white dark:bg-blue-700'
-                  : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-              } shadow-sm hover:shadow-md transition-shadow duration-200`
+            <div className={`max-w-[85%] rounded-lg p-3 ${
+              message.role === 'user'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+            }`}>
+              <p>{message.content}</p>
+            </div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      
+      <div className="border-t p-4">
+        <form onSubmit={handleSubmit}>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="flex-1 p-2 border rounded"
+              placeholder={isListening ? 'Listening...' : 'Type your message...'}
+              disabled={isListening}
+            />
+            <VoiceInput
+              onTranscription={handleVoiceInput}
+              onInterimTranscript={handleInterimTranscript}
+              isListening={isListening}
+              setIsListening={setIsListening}
+              disabled={input.trim().length > 0}
+            />
+            <button
+              type="submit"
+              disabled={(!input.trim() && !interimTranscript) || isListening}
+              className="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              Send
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

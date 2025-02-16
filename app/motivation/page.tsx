@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Navbar from '../components/Navbar';
@@ -12,6 +12,13 @@ export default function MotivationPage() {
   const [error, setError] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // Handle auth check in useEffect
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.push('/sign-in');
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   const handleGenerateMotivation = async () => {
     try {
@@ -62,8 +69,13 @@ export default function MotivationPage() {
     }
   };
 
-  if (!isLoaded || !isSignedIn) {
-    router.push('/sign-in');
+  // Show loading state while checking auth
+  if (!isLoaded) {
+    return <div>Loading...</div>;
+  }
+
+  // Don't render anything if not signed in (will redirect)
+  if (!isSignedIn) {
     return null;
   }
 
